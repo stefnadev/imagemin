@@ -56,7 +56,7 @@ CMDOPTIPNG=$(command -v optipng)
 CMDMOZJPEG=$(command -v mozjpeg)
 
 if [ "$CMDOPTIPNG" == "" -o "$CMDMOZJPEG" == "" ]; then
-	error "Could not find compressors." "Please install as root: npm install -g optipng-bin jpegtran-bin" 3
+	error "Could not find compressors." "Please install as root: npm install -g optipng-bin mozjpeg" 3
 fi
 
 # Check for imagemagick
@@ -65,10 +65,6 @@ CMDCONVERT=$(command -v convert)
 if [ "$CMDCONVERT" == "" ]; then
 	error "Could not find imagemagick." "Please install the latest version" 3
 fi
-
-#if [ ! -d "$IMAGEPATH" ]; then
-#	error "Not a directory" "'$IMAGEPATH' is not a directory" 5
-#fi
 
 # Create temporary filename
 TEMPFILE="___temp___"
@@ -89,7 +85,7 @@ function removeTempFile() {
 	fi
 }
 function perc() {
-	p=$(( ($1/$2)*100 ))
+	p=$(( ($1*100)/$2 ))
 	printf "%.0f" "${p}"
 }
 function shrinkFile() {
@@ -98,12 +94,12 @@ function shrinkFile() {
 	f="$1"
 	sizeBefore=$(stat -c%s "$f")
 
-	${CMDCONVERT} "$f" -resize ${MAXIMAGEDIMENSION}x${MAXIMAGEDIMENSION} > ${TEMPFILE}
+	${CMDCONVERT} "$f" -resize "${MAXIMAGEDIMENSION}x${MAXIMAGEDIMENSION}>" ${TEMPFILE}
 
 	if [ -f "$TEMPFILE" ]; then
 		sizeAfter=$(stat -c%s "$TEMPFILE")
 		diff=$(( ${sizeBefore} - ${sizeAfter} ))
-		if [ ${diff} -gt 0 ]; then
+		if [ ${diff} -gt 0 -a ${sizeAfter} -gt 32 ]; then
 			perc=$(perc ${diff} ${sizeBefore})
 			yellow "($perc%) "
 			chown --reference="$f" "$TEMPFILE" && \
@@ -148,14 +144,20 @@ function optimizeFile() {
 function findCommand() {
 	# Process all file extensions
 	ext=""
-	for i in $@; do
-		if [ "$ext" ]; then
-			ext="$ext|$i"
-		else
-			ext="$i"
-		fi
-	done
-	ret="-regextype posix-egrep -regex .*\.($ext)$"
+	if [ $# -gt 1 ]; then
+		for i in $@; do
+			t="-iname *.$i"
+			if [ "$ext" ]; then
+				ext="$ext -o $t"
+			else
+				ext="$t"
+			fi
+		done
+		ext=" ( $ext ) "
+	else
+		ext="-iname *.$1"
+	fi
+	ret="-type f $ext"
 
 	# Add mtime parameter if in use
 	if [ "$MTIME" ]; then
@@ -174,17 +176,15 @@ function optimizeDir() {
 		echo -n "$FILE: "
 		shrinkFile "$FILE"
 		optimizeFile "$FILE" "$cmd"
-		echo ""; # New line
+		echo # New line
 	done
 }
 
 # for debugging
 #set -x
-# no globbing
-set -f
 
-#echo "fixing permissions. requires root." 
-#sudo chmod a+rw $IMAGEPATH -R
+# no globbing #TODO Comment on why no globbing
+set -f
 
 echo "optimizing images"
 
