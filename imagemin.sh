@@ -174,13 +174,16 @@ function optimizeDir() {
 	shift
 	findCmd=$(findCommand $@)
 
+	time=$(date +%s)
+
 	# we need to use while read to optimize files with space in filename
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
-		time=$(date --utc '+%Y-%m-%d %H:%M:%S')
-		echo -n "$time $FILE: "
+		echo -n "$FILE: "
 		shrinkFile "$FILE"
 		optimizeFile "$FILE" "$cmd"
-		echo # New line
+		ltime=$(date +%s)
+		echo " ($(( $ltime - $time )) sec)" # New line
+		time=${ltime}
 	done
 }
 
