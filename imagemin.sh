@@ -88,6 +88,10 @@ function removeTempFile() {
 		rm "$TEMPFILE"
 	fi
 }
+function perc() {
+	p=$(( ($1/$2)*100 ))
+	printf "%.0f" "${p}"
+}
 function shrinkFile() {
 	removeTempFile
 
@@ -98,9 +102,9 @@ function shrinkFile() {
 
 	if [ -f "$TEMPFILE" ]; then
 		sizeAfter=$(stat -c%s "$TEMPFILE")
-		diff="$sizeBefore - $sizeAfter"
+		diff=$(( ${sizeBefore} - ${sizeAfter} ))
 		if [ ${diff} -gt 0 ]; then
-			perc=$(gawk "BEGIN { printf \"%.0f\", ($diff/$sizeBefore)*100}")
+			perc=$(perc ${diff} ${sizeBefore})
 			yellow "($perc%) "
 			chown --reference="$f" "$TEMPFILE" && \
 			chmod --reference="$f" "$TEMPFILE" && \
@@ -120,10 +124,10 @@ function optimizeFile() {
 	if [ -f "$TEMPFILE" ]; then
 		sizeAfter=$(stat -c%s "$TEMPFILE")
 		if [ ${sizeAfter} -gt 32 ]; then
-			let diff="$sizeBefore - $sizeAfter"
+			diff=$(( ${sizeBefore} - ${sizeAfter} ))
 
 			if [ ${diff} -gt 0 ]; then
-				perc=$(gawk "BEGIN { printf \"%.0f\", ($diff/$sizeBefore)*100}")
+				perc=$(perc ${diff} ${sizeBefore})
 				green "($perc%)"
 				chown --reference="$f" "$TEMPFILE" && \
 				chmod --reference="$f" "$TEMPFILE" && \
