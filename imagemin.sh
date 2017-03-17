@@ -67,7 +67,8 @@ if [ "$CMDCONVERT" == "" ]; then
 fi
 
 # Create temporary filename
-TEMPFILE="___temp___"
+# Use the /tmp folder because it might be on another file system (performance)
+TEMPFILE="/tmp/imagemin___temp___"
 
 # Maximum dimension of image
 MAXIMAGEDIMENSION=2000
@@ -113,7 +114,7 @@ function optimizeFile() {
 
 	f="$1"
 	cmd="$2"
-	sizeBefore=$(stat -c%s "$1")
+	sizeBefore=$(stat -c%s "$f")
 
 	${cmd} "$f" "$TEMPFILE"
 	
@@ -157,7 +158,9 @@ function findCommand() {
 	else
 		ext="-iname *.$1"
 	fi
-	ret="-type f $ext"
+	# Minimum of 128bytes
+	# And must be a file (no symlinks allowed)
+	ret="-type f -size +128c $ext"
 
 	# Add mtime parameter if in use
 	if [ "$MTIME" ]; then
@@ -172,8 +175,9 @@ function optimizeDir() {
 	findCmd=$(findCommand $@)
 
 	# we need to use while read to optimize files with space in filename
-	find "$IMAGEPATH" ${findCmd} | while read -r FILE;do
-		echo -n "$FILE: "
+	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
+		time=$(date --utc '+%Y-%m-%d %H:%M:%S')
+		echo -n "$time $FILE: "
 		shrinkFile "$FILE"
 		optimizeFile "$FILE" "$cmd"
 		echo # New line
@@ -186,9 +190,6 @@ function optimizeDir() {
 # no globbing #TODO Comment on why no globbing
 set -f
 
-echo "optimizing images"
-
-# optimize
 optimizeDir getPngCmd png
 optimizeDir getJpegCmd jpg jpeg
 removeTempFile
