@@ -96,9 +96,9 @@ function shrinkFile() {
 	removeTempFile
 
 	f="$1"
-	sizeBefore=$(stat -c%s "$1")
+	sizeBefore=$(stat -c%s "$f")
 
-	${CMDCONVERT} "$f" -resize ${MAXIMAGEDIMENSION}x${MAXIMAGEDIMENSION}\> ${TEMPFILE}
+	${CMDCONVERT} "$f" -resize ${MAXIMAGEDIMENSION}x${MAXIMAGEDIMENSION} > ${TEMPFILE}
 
 	if [ -f "$TEMPFILE" ]; then
 		sizeAfter=$(stat -c%s "$TEMPFILE")
