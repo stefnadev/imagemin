@@ -77,10 +77,10 @@ TEMPFILE="___temp___"
 MAXIMAGEDIMENSION=2000
 
 function getJpegCmd() {
-	$CMDMOZJPEG -progressive -optimize -outfile "$2" "$1"
+	${CMDMOZJPEG} -progressive -optimize -outfile "$2" "$1"
 }
 function getPngCmd() {
-	$CMDOPTIPNG -silent -strip all -o2 -out "$2" "$1"
+	${CMDOPTIPNG} -silent -strip all -o2 -out "$2" "$1"
 }
 function removeTempFile() {
 	# remove any existing tempfile
@@ -94,12 +94,12 @@ function shrinkFile() {
 	f="$1"
 	sizeBefore=$(stat -c%s "$1")
 
-	$CMDCONVERT "$f" -resize $MAXIMAGEDIMENSIONx$MAXIMAGEDIMENSION\> $TEMPFILE
+	${CMDCONVERT} "$f" -resize ${MAXIMAGEDIMENSION}x${MAXIMAGEDIMENSION}\> ${TEMPFILE}
 
 	if [ -f "$TEMPFILE" ]; then
 		sizeAfter=$(stat -c%s "$TEMPFILE")
-		let diff="$sizeBefore - $sizeAfter"
-		if [ $diff -gt 0 ]; then
+		diff="$sizeBefore - $sizeAfter"
+		if [ ${diff} -gt 0 ]; then
 			perc=$(gawk "BEGIN { printf \"%.0f\", ($diff/$sizeBefore)*100}")
 			yellow "($perc%) "
 			chown --reference="$f" "$TEMPFILE" && \
@@ -115,14 +115,14 @@ function optimizeFile() {
 	cmd="$2"
 	sizeBefore=$(stat -c%s "$1")
 
-	$cmd "$f" "$TEMPFILE"
+	${cmd} "$f" "$TEMPFILE"
 	
 	if [ -f "$TEMPFILE" ]; then
 		sizeAfter=$(stat -c%s "$TEMPFILE")
-		if [ $sizeAfter -gt 32 ]; then
+		if [ ${sizeAfter} -gt 32 ]; then
 			let diff="$sizeBefore - $sizeAfter"
 
-			if [ $diff -gt 0 ]; then
+			if [ ${diff} -gt 0 ]; then
 				perc=$(gawk "BEGIN { printf \"%.0f\", ($diff/$sizeBefore)*100}")
 				green "($perc%)"
 				chown --reference="$f" "$TEMPFILE" && \
@@ -166,7 +166,7 @@ function optimizeDir() {
 	findCmd=$(findCommand $@)
 
 	# we need to use while read to optimize files with space in filename
-	find "$IMAGEPATH" $findCmd | while read -r FILE;do
+	find "$IMAGEPATH" ${findCmd} | while read -r FILE;do
 		echo -n "$FILE: "
 		shrinkFile "$FILE"
 		optimizeFile "$FILE" "$cmd"
