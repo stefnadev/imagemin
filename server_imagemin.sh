@@ -52,6 +52,8 @@ if [ $# -lt 1 ]; then
 	error "No directories given"
 fi
 
+echo "Starting optimizations at $(date -uR)"
+
 if [ "$mtime" == "" -o "$mtime" == "0" ]; then
 	yellow "Disabling mtime"
 	mtime=""
@@ -80,3 +82,7 @@ for i in $@; do
 		fi
 	fi
 done
+
+echo "Optimizations done at $(date -uR)"
+echo "----------------------------------"
+echo
