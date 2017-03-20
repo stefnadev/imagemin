@@ -1,9 +1,12 @@
 #!/bin/bash
 
-function usage() {
-	echo -e "\tUsage: $0: PATH [MTIME]\n" >&2
+defaultUrl="http://localhost:8082"
+
+usage() {
+	echo -e "\tUsage: $0: PATH [MTIME] [URL]\n" >&2
 	echo -e "\t\tPATH:  Path to image files" >&2
 	echo -e "\t\tMTIME: Optional: Find files modified less than MTIME days ago" >&2
+	echo -e "\t\tURL:   Optional: Send request to URL (default=$defaultUrl)" >&2
 	echo  >&2
 	if [ "$1" != "" ]; then
 		exit $1
@@ -11,24 +14,30 @@ function usage() {
 		exit 1
 	fi
 }
-function errorMsg() {
+errorMsg() {
 	echo -e "\e[31m$1\e[0m" >&2
 	if [ "$2" != "" ]; then
 		echo "$2"  >&2
 	fi
 	echo >&2
 }
-function error() {
+error() {
 	errorMsg "$1" "$2"
 	usage $3
 }
-function warn() {
+reset() {
+	echo -ne "\e[0m"
+}
+red() {
+	echo -ne "\e[31m$1\e[0m"
+}
+warn() {
 	echo -ne "\e[2m$1\e[0m"
 }
-function green() {
+green() {
 	echo -ne "\e[32m$1\e[0m"
 }
-function yellow() {
+yellow() {
 	echo -ne "\e[33m$1\e[0m"
 }
 
@@ -50,20 +59,17 @@ fi
 # Read parameters
 IMAGEPATH="$1"
 MTIME="$2"
-
-# Check for compressors
-CMDOPTIPNG=$(command -v optipng)
-CMDMOZJPEG=$(command -v mozjpeg)
-
-if [ "$CMDOPTIPNG" == "" -o "$CMDMOZJPEG" == "" ]; then
-	error "Could not find compressors." "Please install as root: npm install -g optipng-bin mozjpeg" 3
+if [ "$MTIME" == "0" ]; then
+	MTIME=""
+fi
+URL=${defaultUrl}
+if [[ "$3" =~ https? ]]; then
+	URL="$3"
 fi
 
-# Check for imagemagick
-CMDCONVERT=$(command -v convert)
-
-if [ "$CMDCONVERT" == "" ]; then
-	error "Could not find imagemagick." "Please install the latest version" 3
+ping=$(curl -s -w "%{http_code}" "$URL/ping")
+if [ "$ping" != "204" ]; then
+	error "Could not contact server"
 fi
 
 # Create temporary filename
@@ -73,76 +79,89 @@ TEMPFILE="/tmp/imagemin___temp___"
 # Maximum dimension of image
 MAXIMAGEDIMENSION=2000
 
-function getJpegCmd() {
-	${CMDMOZJPEG} -progressive -optimize -outfile "$2" "$1"
-}
-function getPngCmd() {
-	${CMDOPTIPNG} -silent -strip all -o2 -out "$2" "$1"
-}
-function removeTempFile() {
+removeTempFile() {
 	# remove any existing tempfile
 	if [ -f "$TEMPFILE" ]; then
 		rm "$TEMPFILE"
 	fi
 }
-function perc() {
-	p=$(( ($1*100)/$2 ))
-	printf "%.0f" "${p}"
+postFile() {
+	input="$1"
+	output="$2"
+	real=$(realpath "${input}")
+	real=${real// /%20}
+	headers=$(curl -s -D - -w "%{http_code}" -o "$output" \
+		--retry 3 --retry-delay 5 \
+		-H "Expect:" -H "Content-Type: multipart/form-data" \
+		-F "img=@$input" "${URL}${real}")
+	formatResponse "$headers" "$output"
 }
-function shrinkFile() {
-	removeTempFile
-
-	f="$1"
-	sizeBefore=$(stat -c%s "$f")
-
-	${CMDCONVERT} "$f" -resize "${MAXIMAGEDIMENSION}x${MAXIMAGEDIMENSION}>" ${TEMPFILE}
-
-	if [ -f "$TEMPFILE" ]; then
-		sizeAfter=$(stat -c%s "$TEMPFILE")
-		diff=$(( ${sizeBefore} - ${sizeAfter} ))
-		if [ ${diff} -gt 0 -a ${sizeAfter} -gt 32 ]; then
-			perc=$(perc ${diff} ${sizeBefore})
-			yellow "($perc%) "
-			chown --reference="$f" "$TEMPFILE" && \
-			chmod --reference="$f" "$TEMPFILE" && \
-			mv "$TEMPFILE" "$f"
+formatResponse() {
+	tmpFile="$2"
+	r=${1//$'\r'/}
+	code="${r##*$'\n'}"
+	if [ "$code" == "200" ]; then
+		if [[ "$r" =~ ST-Img-Result:.([^$'\n']+)\ *$'\n' ]]; then
+			line="${BASH_REMATCH[1]}"
+		else
+			line=$(echo "$1"|grep ST-Img-Result|sed 's@.*: @@')
 		fi
+		if [ "$line" != "" ]; then
+			read shrink optimize total <<<$(IFS=";"; echo ${line})
+			yellow "${shrink} "
+			yellow "${optimize} "
+			green $(trim ${total})
+		else
+			warn "Could not parse headers"
+		fi
+	else
+		err=
+		if [ "$tmpFile" != "" -a -f "$tmpFile" ]; then
+			err=$(tail -n 1 "${tmpFile}")
+			rm "$tmpFile"
+		fi
+		warn "Bad Response code ($code): $err"
 	fi
 }
-function optimizeFile() {
+trim() {
+    local var="$*"
+    # remove leading whitespace characters
+    var="${var#"${var%%[![:space:]]*}"}"
+    # remove trailing whitespace characters
+    var="${var%"${var##*[![:space:]]}"}"
+    echo -n "$var"
+}
+optimizeFile() {
 	removeTempFile
 
 	f="$1"
 	cmd="$2"
-	sizeBefore=$(stat -c%s "$f")
 
-	${cmd} "$f" "$TEMPFILE"
-	
+	optRes="$(postFile "$f" "$TEMPFILE")"
+
 	if [ -f "$TEMPFILE" ]; then
 		sizeAfter=$(stat -c%s "$TEMPFILE")
 		if [ ${sizeAfter} -gt 32 ]; then
-			diff=$(( ${sizeBefore} - ${sizeAfter} ))
-
-			if [ ${diff} -gt 0 ]; then
-				perc=$(perc ${diff} ${sizeBefore})
-				green "($perc%)"
-				chown --reference="$f" "$TEMPFILE" && \
-				chmod --reference="$f" "$TEMPFILE" && \
-				mv "$TEMPFILE" "$f"
-				if [ $? -ne 0 ]; then
-					errorMsg "Optimization failed!" "Could not prepare new file"
-				fi
+			chown --reference="$f" "$TEMPFILE" && \
+			chmod --reference="$f" "$TEMPFILE" && \
+			mv "$TEMPFILE" "$f"
+			if [ $? -ne 0 ]; then
+				red "Could not prepare new file"
 			else
-				warn "No optimization"
+				echo -n ${optRes}
 			fi
 		else
-			errorMsg "Optimization failed!" "Temporary file zero bytes."
+			warn "No optimization"
 		fi
 	else
-		errorMsg "Optimization failed!" "Temporary file not created."
+		if [ "$optRes" == "" ]; then
+			red "Temporary file not created."
+		else
+			red "$optRes"
+		fi
 	fi
 }
-function findCommand() {
+findCommand() {
 	# Process all file extensions
 	ext=""
 	if [ $# -gt 1 ]; then
@@ -169,9 +188,7 @@ function findCommand() {
 
 	echo "$ret"
 }
-function optimizeDir() {
-	cmd=$1
-	shift
+optimizeDir() {
 	findCmd=$(findCommand $@)
 
 	time=$(date +%s)
@@ -179,8 +196,7 @@ function optimizeDir() {
 	# we need to use while read to optimize files with space in filename
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
 		echo -n "$FILE: "
-		shrinkFile "$FILE"
-		optimizeFile "$FILE" "$cmd"
+		optimizeFile "$FILE"
 		ltime=$(date +%s)
 		echo " ($(( $ltime - $time )) sec)" # New line
 		time=${ltime}
@@ -190,9 +206,8 @@ function optimizeDir() {
 # for debugging
 #set -x
 
-# no globbing #TODO Comment on why no globbing
+# no globbing so we won't accidentally match some files while running find
 set -f
 
-optimizeDir getPngCmd png
-optimizeDir getJpegCmd jpg jpeg
+optimizeDir png jpg jpeg
 removeTempFile
