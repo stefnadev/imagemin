@@ -2,10 +2,10 @@
 
 PROG=$0
 STOPFILE=".noImageMin"
-NICE="3"
 
 usage() {
-	echo "Usage: ${PROG} mtime dir... " >&2
+	echo "Usage: ${PROG} url mtime dir... " >&2
+	echo -e "\turl to the stimgops server " >&2
 	echo -e "\tmtime 0 to skip mtime, else this is used in the find commands " >&2
 	echo >&2
 	exit 1
@@ -45,6 +45,13 @@ if [ $# -lt 1 ]; then
 	error "Missing arguments"
 fi
 
+url=$1
+shift
+
+if [[ ! "$url" =~ ^https?:// ]]; then
+	error "'$url' does not look like a valid url"
+fi
+
 mtime=${1//[^0-9]/}
 shift
 
@@ -52,7 +59,12 @@ if [ $# -lt 1 ]; then
 	error "No directories given"
 fi
 
-echo "Starting optimizations at $(date -uR)"
+ping=$(curl -s -w "%{http_code}" "$url/ping")
+if [ "$ping" != "204" ]; then
+	error "Could not contact server"
+fi
+
+echo "Starting optimizations at $(date -uR) - url: $url"
 
 if [ "$mtime" == "" -o "$mtime" == "0" ]; then
 	yellow "Disabling mtime"
@@ -78,7 +90,7 @@ for i in $@; do
 		fi
 		if [ ${ok} -eq 1 ]; then
 			echo "Optimizing $(green ${p}) ..."
-			nice -n ${NICE} "${script}" "${p}" "$mtime"
+			"${script}" "${p}" "$mtime" "${url}"
 		fi
 	fi
 done
