@@ -142,9 +142,11 @@ optimizeFile() {
 	if [ -f "$TEMPFILE" ]; then
 		sizeAfter=$(stat -c%s "$TEMPFILE")
 		if [ ${sizeAfter} -gt 32 ]; then
+			tmpDate=$(date +%Y%m%d%H%I.%S -r "$f")
 			chown --reference="$f" "$TEMPFILE" && \
 			chmod --reference="$f" "$TEMPFILE" && \
-			mv "$TEMPFILE" "$f"
+			mv "$TEMPFILE" "$f" && \
+			touch -t "$tmpDate" "$f"
 			if [ $? -ne 0 ]; then
 				red "Could not prepare new file"
 			else
