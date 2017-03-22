@@ -60,7 +60,7 @@ if [ $# -lt 1 ]; then
 fi
 
 ping=$(curl -s -w "%{http_code}" "$url/ping")
-if [ "$ping" != "204" ]; then
+if [ "$ping" != "200" ]; then
 	error "Could not contact server"
 fi
 
