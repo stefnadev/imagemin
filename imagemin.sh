@@ -68,7 +68,7 @@ if [[ "$3" =~ https? ]]; then
 fi
 
 ping=$(curl -s -w "%{http_code}" "$URL/ping")
-if [ "$ping" != "204" ]; then
+if [ "$ping" != "200" ]; then
 	error "Could not contact server"
 fi
 
