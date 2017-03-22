@@ -114,6 +114,8 @@ formatResponse() {
 		else
 			warn "Could not parse headers"
 		fi
+	elif [ "$code" == "204" ]; then
+		warn "No optimization"
 	else
 		err=
 		if [ "$tmpFile" != "" -a -f "$tmpFile" ]; then
