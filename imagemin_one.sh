@@ -104,6 +104,8 @@ run() {
 	local ltime=$(date +%s)
 	# Echo in one line to try to keep line content together when running in parallel
 	echo "$file: $res ($(( $ltime - $time )) sec)"
+	# Just in case
+	removeTempFile
 }
 
 run $*
