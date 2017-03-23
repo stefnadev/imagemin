@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-. funcs.sh
+. $(dirname $0)/funcs.sh
 
 PID=$$
 TEMPFILE=/tmp/_imagemin_temp_${PID}

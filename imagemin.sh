@@ -4,7 +4,7 @@ defaultUrl="http://localhost:8082"
 CHECK_NOOP=.noop
 concurrency=2
 
-. funcs.sh
+. $(dirname $0)/funcs.sh
 
 usage() {
 	echo -e "Usage: $0: PATH [MTIME] [URL] [CONCURRENCY]\n" >&2

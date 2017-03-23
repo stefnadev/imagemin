@@ -4,7 +4,7 @@ PROG=$0
 STOPFILE=".noImageMin"
 concurrency=
 
-. funcs.sh
+. $(dirname $0)/funcs.sh
 
 usage() {
 	echo "Usage: ${PROG} [opts] url mtime dir... " >&2
