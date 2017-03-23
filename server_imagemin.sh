@@ -3,8 +3,8 @@
 PROG=$0
 STOPFILE=".noImageMin"
 concurrency=
-
-. $(dirname $0)/funcs.sh
+BASE_DIR=$(dirname ${PROG})
+. ${BASE_DIR}/funcs.sh
 
 usage() {
 	echo "Usage: ${PROG} [opts] url mtime dir... " >&2
@@ -17,8 +17,7 @@ usage() {
 	exit 1
 }
 
-dir=$(dirname ${PROG})
-script="$dir/imagemin.sh"
+script="$BASE_DIR/imagemin.sh"
 if [ ! -f ${script} ]; then
 	error "Could not find script" "$script"
 fi

@@ -3,8 +3,9 @@
 defaultUrl="http://localhost:8082"
 CHECK_NOOP=.noop
 concurrency=2
+BASE_DIR=$(dirname $0)
 
-. $(dirname $0)/funcs.sh
+. ${BASE_DIR}/funcs.sh
 
 usage() {
 	echo -e "Usage: $0: PATH [MTIME] [URL] [CONCURRENCY]\n" >&2
@@ -118,7 +119,7 @@ optimizeDir() {
 
 	local commandsFile=/tmp/_imagemin_cmds_$$
 	> ${commandsFile}
-	local script="./imagemin_one.sh"
+	local script="$BASE_DIR/imagemin_one.sh"
 
 	# we need to use while read to optimize files with space in filename
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
