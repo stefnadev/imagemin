@@ -2,34 +2,19 @@
 
 PROG=$0
 STOPFILE=".noImageMin"
+concurrency=
+
+. funcs.sh
 
 usage() {
-	echo "Usage: ${PROG} url mtime dir... " >&2
+	echo "Usage: ${PROG} [opts] url mtime dir... " >&2
 	echo -e "\turl to the stimgops server " >&2
 	echo -e "\tmtime 0 to skip mtime, else this is used in the find commands " >&2
 	echo >&2
-	exit 1
-}
-
-errorMsg() {
-	echo -e "\e[31m$1\e[0m" >&2
-	if [ "$2" != "" ]; then
-		echo "$2"  >&2
-	fi
+	echo -e "\tOptions:" >&2
+	echo -e "\t\t-c <n>: concurrency param sent to imagemin.sh" >&2
 	echo >&2
-}
-error() {
-	errorMsg "$1" "$2"
-	usage
-}
-warn() {
-	echo -ne "\e[2m$1\e[0m"
-}
-green() {
-	echo -ne "\e[32m$1\e[0m"
-}
-yellow() {
-	echo -ne "\e[33m$1\e[0m"
+	exit 1
 }
 
 dir=$(dirname ${PROG})
@@ -41,6 +26,16 @@ fi
 if [ "$1" == '--help' -o "$1" == '-h' ]; then
 	usage
 fi
+
+if [ "$1" == '-c' ]; then
+	concurrency=$2
+	if [[ ! "$concurrency" =~ ^[1-9]$ ]]; then
+	 	error "Concurrency must be a number between 1 and 9"
+	fi
+	shift
+	shift
+fi
+
 if [ $# -lt 1 ]; then
 	error "Missing arguments"
 fi
@@ -59,12 +54,14 @@ if [ $# -lt 1 ]; then
 	error "No directories given"
 fi
 
-ping=$(curl -s -w "%{http_code}" "$url/ping")
-if [ "$ping" != "200" ]; then
-	error "Could not contact server"
+ping "$url"
+
+extraOpts=""
+if [ "$concurrency" != "" ]; then
+	extraOpts=" concurrency=$concurrency"
 fi
 
-echo "Starting optimizations at $(date -uR) - url: $url"
+echo "Starting optimizations at $(date -uR) - url: $url $extraOpts"
 
 if [ "$mtime" == "" -o "$mtime" == "0" ]; then
 	yellow "Disabling mtime"
@@ -90,7 +87,7 @@ for i in $@; do
 		fi
 		if [ ${ok} -eq 1 ]; then
 			echo "Optimizing $(green ${p}) ..."
-			"${script}" "${p}" "$mtime" "${url}"
+			"${script}" "${p}" "$mtime" "${url}" "$concurrency"
 		fi
 	fi
 done
