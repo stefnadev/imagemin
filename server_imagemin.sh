@@ -13,6 +13,7 @@ usage() {
 	echo >&2
 	echo -e "\tOptions:" >&2
 	echo -e "\t\t-c <n>: concurrency param sent to imagemin.sh" >&2
+	echo -e "\t\t-t <n>: threshold param sent to imagemin.sh" >&2
 	echo >&2
 	exit 1
 }
@@ -26,13 +27,29 @@ if [ "$1" == '--help' -o "$1" == '-h' ]; then
 	usage
 fi
 
-if [ "$1" == '-c' ]; then
-	concurrency=$2
-	if [[ ! "$concurrency" =~ ^[1-9]$ ]]; then
-	 	error "Concurrency must be a number between 1 and 9"
+optNum=1
+optTaken=0
+for opt; do
+	if [ "$opt" == '-c' ]; then
+		let valueNum=$optNum+1
+		concurrency=${!valueNum}
+		if [[ ! "$concurrency" =~ ^[1-9]$ ]]; then
+			error "Concurrency must be a number between 1 and 9"
+		fi
+		let optTaken=$optTaken+2
 	fi
-	shift
-	shift
+	if [ "$opt" == '-t' ]; then
+		let valueNum=$optNum+1
+		threshold=${!valueNum}
+		if [[ ! "$threshold" =~ ^[0-9]{1,2}$ ]]; then
+			error "Threshold must be a number between 1 and 99"
+		fi
+		let optTaken=$optTaken+2
+	fi
+	let optNum=$optNum+1
+done
+if [ ${optTaken} -gt 0 ]; then
+	shift ${optTaken}
 fi
 
 if [ $# -lt 1 ]; then
@@ -57,10 +74,13 @@ ping "$url"
 
 extraOpts=""
 if [ "$concurrency" != "" ]; then
-	extraOpts=" concurrency=$concurrency"
+	extraOpts="$extraOpts concurrency=$concurrency"
+fi
+if [ "$threshold" != "" ]; then
+	extraOpts="$extraOpts threshold=$threshold"
 fi
 
-echo "Starting optimizations at $(date -uR) - url: $url $extraOpts"
+echo "Starting optimizations at $(date -uR) - url: $url$extraOpts"
 
 if [ "$mtime" == "" -o "$mtime" == "0" ]; then
 	yellow "Disabling mtime"
@@ -86,7 +106,7 @@ for i in $@; do
 		fi
 		if [ ${ok} -eq 1 ]; then
 			echo "Optimizing $(green ${p}) ..."
-			"${script}" "${p}" "$mtime" "${url}" "$concurrency"
+			"${script}" "${p}" "$mtime" "${url}" "$concurrency" "$threshold"
 		fi
 	fi
 done

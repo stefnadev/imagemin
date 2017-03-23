@@ -4,6 +4,7 @@
 
 PID=$$
 TEMPFILE=/tmp/_imagemin_temp_${PID}
+threshold=
 
 removeTempFile() {
 	# remove any existing tempfile
@@ -37,6 +38,15 @@ formatResponse() {
 		fi
 		if [ "$line" != "" ]; then
 			read shrink optimize total <<<$(IFS=";"; echo ${line})
+			if [ "$threshold" != "" ]; then
+				totalNum=${total//[^0-9]}
+				let threshold=$threshold*100
+				if [ ${totalNum} -le ${threshold} ]; then
+					warn "Not enough optimization ($totalNum < $threshold)"
+					rm "$tmpFile";
+					return
+				fi
+			fi
 			yellow "${shrink} "
 			yellow "${optimize} "
 			green $(trim ${total})
@@ -86,9 +96,21 @@ optimizeFile() {
 	fi
 }
 usage() {
-	echo "Usage: $0 URL FILE" >&2
+	echo "Usage: $0 [opts] URL FILE" >&2
+	echo -e "\tOptions:" >&2
+	echo -e "\t\t-t <n>: Set the mininum Total optimization value to switch" >&2
 	exit 1
 }
+
+if [ "$1" == "-t" ]; then
+	threshold="$2"
+
+	if [[ ! "$threshold" =~ ^[0-9]{1,2}$ ]]; then
+	 	error "Threshold must be a number between 1 and 99"
+	fi
+	shift
+	shift
+fi
 
 if [ $# -lt 2 ]; then
 	usage

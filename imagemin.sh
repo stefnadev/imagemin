@@ -3,16 +3,19 @@
 defaultUrl="http://localhost:8082"
 CHECK_NOOP=.noop
 concurrency=2
+threshold=
+
 BASE_DIR=$(dirname $0)
 
 . ${BASE_DIR}/funcs.sh
 
 usage() {
-	echo -e "Usage: $0: PATH [MTIME] [URL] [CONCURRENCY]\n" >&2
-	echo -e "\tPATH:  		Path to image files" >&2
-	echo -e "\tMTIME: 		Optional: Find files modified less than MTIME days ago" >&2
-	echo -e "\tURL:   		Optional: Send request to URL (default=$defaultUrl)" >&2
-	echo -e "\tCONCURRENCY:	Optional: How many concurrent processes (default=$concurrency)" >&2
+	echo -e "Usage: $0: PATH [MTIME] [URL] [CONCURRENCY] [THRESHOLD]\n" >&2
+	echo -e "\tPATH:        Path to image files" >&2
+	echo -e "\tMTIME:       Optional: Find files modified less than MTIME days ago" >&2
+	echo -e "\tURL:         Optional: Send request to URL (default=$defaultUrl)" >&2
+	echo -e "\tCONCURRENCY: Optional: How many concurrent processes (default=$concurrency)" >&2
+	echo -e "\tTHRESHOLD:   Optional: Set mininum optimization threshold (default=none)" >&2
 	echo  >&2
 	if [ "$1" != "" ]; then
 		exit $1
@@ -49,6 +52,13 @@ fi
 
 if [ "$4" != "" ]; then
 	concurrency=$4
+fi
+
+if [ "$5" != "" ]; then
+	threshold="$5"
+	if [[ ! "$threshold" =~ ^[0-9]{1,2}$ ]]; then
+	 	error "Threshold must be a number between 1 and 99"
+	fi
 fi
 
 ping "$URL"
@@ -120,6 +130,9 @@ optimizeDir() {
 	local commandsFile=/tmp/_imagemin_cmds_$$
 	> ${commandsFile}
 	local script="$BASE_DIR/imagemin_one.sh"
+	if [ "$threshold" != "" ]; then
+		script="$script -t $threshold"
+	fi
 
 	# we need to use while read to optimize files with space in filename
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
@@ -131,7 +144,7 @@ optimizeDir() {
 	done
 
 	local count=$(wc -l ${commandsFile}|awk '{print $1}')
-	echo "OK All files gathered. No running $count commands with concurrency of $concurrency (PID=$$):"
+	echo "OK All files gathered. Now running $count commands with concurrency of $concurrency (PID=$$):"
 	cat ${commandsFile} | xargs -I CMD --max-procs=${concurrency} bash -c CMD
 	local ltime=$(date +%s)
 	local totalTime="$(( $ltime - $time ))"
