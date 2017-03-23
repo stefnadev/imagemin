@@ -18,7 +18,7 @@ postFile() {
 	local real=$(realpath "${input}")
 	real=${real// /%20}
 	local headers=$(curl -s -D - -w "%{http_code}" -o "$output" \
-		--retry 3 --retry-delay 5 \
+		--retry 5 --retry-delay 5 \
 		-H "Expect:" -H "Content-Type: multipart/form-data" \
 		-F "img=@$input" "${url}${real}")
 	formatResponse "$headers" "$output"
