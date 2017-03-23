@@ -1,6 +1,7 @@
 #!/bin/bash
 
 defaultUrl="http://localhost:8082"
+CHECK_NOOP=.noop
 
 usage() {
 	echo -e "\tUsage: $0: PATH [MTIME] [URL]\n" >&2
@@ -192,6 +193,38 @@ findCommand() {
 
 	echo "$ret"
 }
+declare -A checkedDirs=()
+shouldRun() {
+	file="${1%/}"
+	base="${2%/}"
+	dir="$(dirname "$file")"
+	[ ${checkedDirs[$dir]+_} ] && {
+		test ${checkedDirs[$dir]} == 't'
+		return $?
+	}
+
+	if [ ! -f "$dir/$CHECK_NOOP" ] ; then
+		shouldRun='t'
+	else
+		shouldRun='f'
+	fi
+
+	if [ ${shouldRun} == 'f' -o "$dir" == "$base" ]; then
+		checkedDirs[$dir]=${shouldRun}
+		test ${shouldRun} == 't'
+		return $?
+	fi
+
+	shouldRun "$dir" "$base"
+	if [ $? -eq 0 ]; then
+		ret='t'
+	else
+		ret='f'
+	fi
+	checkedDirs[$dir]=${ret}
+	test ${ret} == 't'
+	return $?
+}
 optimizeDir() {
 	findCmd=$(findCommand $@)
 
@@ -200,10 +233,14 @@ optimizeDir() {
 	# we need to use while read to optimize files with space in filename
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
 		echo -n "$FILE: "
-		optimizeFile "$FILE"
-		ltime=$(date +%s)
-		echo " ($(( $ltime - $time )) sec)" # New line
-		time=${ltime}
+		if shouldRun "$FILE" "$IMAGEPATH"; then
+			optimizeFile "$FILE"
+			ltime=$(date +%s)
+			echo " ($(( $ltime - $time )) sec)" # New line
+			time=${ltime}
+		else
+			echo "NOOP"
+		fi
 	done
 }
 
