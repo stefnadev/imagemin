@@ -124,14 +124,14 @@ optimizeDir() {
 	# we need to use while read to optimize files with space in filename
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
 		if shouldRun "$FILE" "$IMAGEPATH"; then
-			echo "$script $URL $FILE" >> ${commandsFile}
+			echo "$script '$URL' '$FILE'" >> ${commandsFile}
 		else
 			echo "NOOP: $FILE"
 		fi
 	done
 
 	local count=$(wc -l ${commandsFile}|awk '{print $1}')
-	echo "OK All files gathered. No running $count commands with concurrency of $concurrency:"
+	echo "OK All files gathered. No running $count commands with concurrency of $concurrency (PID=$$):"
 	cat ${commandsFile} | xargs -I CMD --max-procs=${concurrency} bash -c CMD
 	local ltime=$(date +%s)
 	local totalTime="$(( $ltime - $time ))"

@@ -89,23 +89,23 @@ usage() {
 	echo "Usage: $0 URL FILE" >&2
 	exit 1
 }
-run() {
-	if [ $# -ne 2 ]; then
-		usage
-	fi
-	local url="$1"
-	local file="$2"
-	if [ ! -f "$file" ]; then
-		error "'$file' is not a file"
-	fi
-	local time=$(date +%s)
 
-	local res=$(optimizeFile "$file" "$url")
-	local ltime=$(date +%s)
-	# Echo in one line to try to keep line content together when running in parallel
-	echo "$file: $res ($(( $ltime - $time )) sec)"
-	# Just in case
-	removeTempFile
-}
+if [ $# -lt 2 ]; then
+	usage
+fi
 
-run $*
+url="$1"
+shift
+# So it is easier to process files with spaces
+file="$*"
+if [ ! -f "$file" ]; then
+	error "'$file' is not a file"
+fi
+time=$(date +%s)
+
+res=$(optimizeFile "$file" "$url")
+ltime=$(date +%s)
+# Echo in one line to try to keep line content together when running in parallel
+echo "$file: $res ($(( $ltime - $time )) sec)"
+# Just in case
+removeTempFile
