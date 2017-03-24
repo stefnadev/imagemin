@@ -33,6 +33,9 @@ green() {
 yellow() {
 	echo -ne "\e[33m$1\e[0m"
 }
+escape() {
+	printf '%q' "$1"
+}
 ping() {
 	local url="$1"
 	local ping=$(curl -s -w "%{http_code}" "$url/ping")

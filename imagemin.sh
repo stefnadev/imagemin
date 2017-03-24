@@ -137,7 +137,7 @@ optimizeDir() {
 	# we need to use while read to optimize files with space in filename
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
 		if shouldRun "$FILE" "$IMAGEPATH"; then
-			echo "$script '$URL' '$FILE'" >> ${commandsFile}
+			echo "$script '$URL' '$(escape "$FILE")'" >> ${commandsFile}
 		else
 			echo "NOOP: $FILE"
 		fi
