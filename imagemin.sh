@@ -5,8 +5,8 @@ CHECK_NOOP=.noop
 concurrency=2
 threshold=1
 optCheckFileBase=.imagemin.list
-optCheckFileDir="${OPT_CHECK_DIR:-/var/www/vhosts}"
-optCheckFile="$optCheckFileDir/$optCheckFileBase"
+OPT_CHECK_DIR="${OPT_CHECK_DIR:-/var/www/vhosts}"
+optCheckFile="$OPT_CHECK_DIR/$optCheckFileBase"
 
 BASE_DIR=$(dirname $0)
 
