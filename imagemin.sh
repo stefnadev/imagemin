@@ -3,7 +3,7 @@
 defaultUrl="http://localhost:8082"
 CHECK_NOOP=.noop
 concurrency=2
-threshold=
+threshold=1
 optCheckFileBase=.imagemin.list
 optCheckFileDir="${OPT_CHECK_DIR:-/var/www/vhosts}"
 optCheckFile="$optCheckFileDir/$optCheckFileBase"
@@ -18,7 +18,7 @@ usage() {
 	echo -e "\tMTIME:       Optional: Find files modified less than MTIME days ago" >&2
 	echo -e "\tURL:         Optional: Send request to URL (default=$defaultUrl)" >&2
 	echo -e "\tCONCURRENCY: Optional: How many concurrent processes (default=$concurrency)" >&2
-	echo -e "\tTHRESHOLD:   Optional: Set mininum optimization threshold (default=none)" >&2
+	echo -e "\tTHRESHOLD:   Optional: Set mininum optimization threshold (default=$threshold)" >&2
 	echo  >&2
 	if [ "$1" != "" ]; then
 		exit $1
