@@ -4,6 +4,9 @@ defaultUrl="http://localhost:8082"
 CHECK_NOOP=.noop
 concurrency=2
 threshold=
+optCheckFileBase=.imagemin.list
+optCheckFileDir="${OPT_CHECK_DIR:-/var/www/vhosts}"
+optCheckFile="$optCheckFileDir/$optCheckFileBase"
 
 BASE_DIR=$(dirname $0)
 
@@ -61,6 +64,13 @@ if [ "$5" != "" ]; then
 	fi
 fi
 
+if [ ! -f "$optCheckFile" ]; then
+	( touch "$optCheckFile" && chmod 666 "$optCheckFile" ) > /dev/null 2>&1
+fi
+if [ ! -w "$optCheckFile" ]; then
+	error "Could not write to '$optCheckFile'"
+fi
+
 ping "$URL"
 
 findCommand() {
@@ -91,28 +101,30 @@ findCommand() {
 	echo "$ret"
 }
 declare -A checkedDirs=()
-shouldRun() {
-	file="${1%/}"
-	base="${2%/}"
-	dir="$(dirname "$file")"
+shouldRunDir() {
+	local file="${1%/}"
+	local base="${2%/}"
+	local dir="$(dirname "$file")"
+	local ret
+
 	[ ${checkedDirs[$dir]+_} ] && {
 		test ${checkedDirs[$dir]} == 't'
 		return $?
 	}
 
 	if [ ! -f "$dir/$CHECK_NOOP" ] ; then
-		shouldRun='t'
+		ret='t'
 	else
-		shouldRun='f'
+		ret='f'
 	fi
 
-	if [ ${shouldRun} == 'f' -o "$dir" == "$base" ]; then
-		checkedDirs[$dir]=${shouldRun}
-		test ${shouldRun} == 't'
+	if [ ${ret} == 'f' -o "$dir" == "$base" ]; then
+		checkedDirs[$dir]=${ret}
+		test ${ret} == 't'
 		return $?
 	fi
 
-	shouldRun "$dir" "$base"
+	shouldRunDir "$dir" "$base"
 	if [ $? -eq 0 ]; then
 		ret='t'
 	else
@@ -121,6 +133,26 @@ shouldRun() {
 	checkedDirs[$dir]=${ret}
 	test ${ret} == 't'
 	return $?
+}
+shouldRun() {
+	local file="${1%/}"
+	local base="${2%/}"
+	if ! shouldRunDir "$file" "$base" ; then
+		# Directory should not be processed
+		return 1
+	fi
+	local lastOptTime=$(egrep "$file$" "$optCheckFile"|tail -n 1)
+	if [ "$lastOptTime" == "" ]; then
+		# Not yet optimized
+		return 0
+	fi
+	lastOptTime=${lastOptTime/%\ */}
+	mtime=$(stat -c %Y "$file")
+	if [ ${mtime} -gt ${lastOptTime} ]; then
+		# file has changed since last optimization
+		return 0
+	fi
+	return 1
 }
 optimizeDir() {
 	local findCmd=$(findCommand $@)
@@ -138,6 +170,7 @@ optimizeDir() {
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
 		if shouldRun "$FILE" "$IMAGEPATH"; then
 			echo "$script '$URL' '$(escape "$FILE")'" >> ${commandsFile}
+			echo "$time $FILE" >> "$optCheckFile"
 		else
 			echo "NOOP: $FILE"
 		fi
