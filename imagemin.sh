@@ -65,7 +65,7 @@ if [ "$5" != "" ]; then
 fi
 
 if [ ! -f "$optCheckFile" ]; then
-	( touch "$optCheckFile" && chmod 666 "$optCheckFile" ) > /dev/null 2>&1
+	error "The optimization check file is missing: '$optCheckFile'"
 fi
 if [ ! -w "$optCheckFile" ]; then
 	error "Could not write to '$optCheckFile'"
