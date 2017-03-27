@@ -165,9 +165,11 @@ optimizeDir() {
 	if [ "$threshold" != "" ]; then
 		script="$script -t $threshold"
 	fi
+	IMAGEPATH="$(realpath "$IMAGEPATH")"
 
 	# we need to use while read to optimize files with space in filename
 	find "$IMAGEPATH" ${findCmd} | while read -r FILE; do
+		FILE="$(realpath "$FILE")"
 		if shouldRun "$FILE" "$IMAGEPATH"; then
 			echo "$script '$URL' '$(escape "$FILE")'" >> ${commandsFile}
 			echo "$time $FILE" >> "$optCheckFile"
