@@ -141,7 +141,10 @@ shouldRun() {
 		# Directory should not be processed
 		return 1
 	fi
-	local lastOptTime=$(grep "$file$" "$optCheckFile"|tail -n 1)
+	# Special grep escape for . and [
+	local fileCheck=${file//\./\\.}
+	fileCheck=${fileCheck//\[/\\[}
+	local lastOptTime=$(grep "$fileCheck$" "$optCheckFile"|tail -n 1)
 	if [ "$lastOptTime" == "" ]; then
 		# Not yet optimized
 		return 0
